@@ -5,10 +5,6 @@ import noisereduce as nr
 import scipy.io.wavfile as wav
 import time
 
-from ui.desktop_ui import JarvisWindow
-from PyQt6.QtWidgets import QApplication
-import sys
-
 from core.stt import SpeechToText
 from core.tts import TextToSpeech
 from brain.llm import LocalLLM
@@ -20,14 +16,11 @@ SAMPLE_RATE = 16000
 DURATION = 5
 
 # Initialize components
-try:
-    stt = SpeechToText()
-except Exception as e:
-    print("Whisper failed:", e)
-
+stt = SpeechToText()
 tts = TextToSpeech()
 llm = LocalLLM()
 router = IntentRouter()
+wake_detector = WakeWordDetector(PORCUPINE_ACCESS_KEY)
 
 # Confirmation state
 pending_action = None
@@ -91,17 +84,12 @@ def record_audio(filename="input.wav"):
 
     print("🛑 Speech ended. Processing...")
 
-app = QApplication(sys.argv)
-window = JarvisWindow()
 
 def run_jarvis():
-    print("Jarvis thread started")
     global pending_action
     global awaiting_confirmation
     global active_mode
     global last_active_time
-
-    wake_detector = WakeWordDetector(PORCUPINE_ACCESS_KEY)
 
     while True:
 
@@ -110,10 +98,8 @@ def run_jarvis():
         # ==========================
         if not active_mode:
             wake_detector.listen()
-            window.showListeningSignal.emit()
             active_mode = True
             last_active_time = time.time()
-
 
         # ==========================
         # If active → listen directly
@@ -170,7 +156,6 @@ def run_jarvis():
                 awaiting_confirmation = True
 
             else:
-                window.showResponseSignal.emit(intent["speak"])
                 tts.speak(intent["speak"])
                 intent["execute"]()
 
@@ -178,10 +163,7 @@ def run_jarvis():
             response = llm.generate(text)
             tts.speak(response)
 
+
+
 if __name__ == "__main__":
-    from threading import Thread
-
-    jarvis_thread = Thread(target=run_jarvis, daemon=True)
-    jarvis_thread.start()
-
-    sys.exit(app.exec())
+    run_jarvis()
