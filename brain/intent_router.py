@@ -99,6 +99,15 @@ class IntentRouter:
         # =========================
         # FALLBACK → LLM STRUCTURED PARSING
         # =========================
+
+        command_keywords = [
+            "open", "create", "delete", "shutdown",
+            "restart", "lock", "sleep", "folder",
+            "file", "drive"
+        ]
+
+        if not any(keyword in text.lower() for keyword in command_keywords):
+            return None
         structured = self.llm.generate_system_command(text)
 
         if structured and "actions" in structured:
